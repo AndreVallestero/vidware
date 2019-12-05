@@ -21,11 +21,37 @@
 #		build
 #		packages
 
+# Define variables
+THREADS=$(nproc)
+EXTRA_CFLAGS="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53"
+
+# Install dependencies
+sudo pacman --noconfirm --needed -S findutils wget tar \
+	libass waf
+
+echo "Preparing build enviornment"
 mkdir -p vidware/{downloads,build,packages}
 
+echo "Downloading packages to custom compile"
+cd vidware/downloads
 echo "https://ffmpeg.org/releases/ffmpeg-4.0.2.tar.bz2 \
 https://github.com/mpv-player/mpv/archive/v0.29.0.tar.gz \
-https://github.com/libass/libass/releases/download/0.14.0/libass-0.14.0.tar.gz \
-https://download.videolan.org/x264/snapshots/x264-snapshot-20180831-2245-stable.tar.bz2" | xargs -n 1 -P 8 wget -q
+https://download.videolan.org/x264/snapshots/x264-snapshot-20180831-2245-stable.tar.bz2" \
+| xargs -n1 -P$THREADS wget -q
 
+echo "Extracting packages and moving to build directory"
+ls *.gz | xargs -n1 -P$THREADS tar xzf
+ls *.bz2 | xargs -n1 -P$THREADS tar jxf
+shopt -s extglob
+mv !(*.tar*) ../build
+cd ../build
+mv *ffmpeg* ffmpeg
+mv *mpv* mpv
+mv *x264* x264
+
+echo "Building x264"
+cd x264
+./configure --prefix=/usr --enable-shared --disable-opencl --extra-cflags=$EXTRA_CFLAGS
+make -j$THREADS
+#sudo ldconfig
 
