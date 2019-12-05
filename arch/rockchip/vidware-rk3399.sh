@@ -26,8 +26,7 @@ THREADS=$(nproc)
 EXTRA_CFLAGS="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53"
 
 # Install dependencies
-sudo pacman --noconfirm --needed -S findutils wget tar \
-	libass waf
+sudo pacman --noconfirm --needed -S findutils wget tar waf libass
 
 echo "Preparing build enviornment"
 mkdir -p vidware/{downloads,build,packages}
@@ -37,7 +36,7 @@ cd vidware/downloads
 echo "https://ffmpeg.org/releases/ffmpeg-4.0.2.tar.bz2 \
 https://github.com/mpv-player/mpv/archive/v0.29.0.tar.gz \
 https://download.videolan.org/x264/snapshots/x264-snapshot-20180831-2245-stable.tar.bz2" \
-| xargs -n1 -P$THREADS wget -q
+| xargs -n1 -P$THREADS wget -q -nc
 
 echo "Extracting packages and moving to build directory"
 ls *.gz | xargs -n1 -P$THREADS tar xzf
@@ -54,4 +53,5 @@ cd x264
 ./configure --prefix=/usr --enable-shared --disable-opencl --extra-cflags=$EXTRA_CFLAGS
 make -j$THREADS
 #sudo ldconfig
+
 
