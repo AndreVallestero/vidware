@@ -8,12 +8,10 @@
 #		can be distribution agnostic (test with Debian/Ubuntu and Arch/Manjaro) 
 #	- Prefer multithreaded decompression tools like pigz, pbzip2, zstd. Use --threads=0 for xz
 #		and zstd to enable multithreading. Use make -j($nproc).
-
-# dependencies: libass waf lame
+# 
 # only clean up when finished so if build is intterupted, progress is saved
 #
-
-# file structure
+# file structure:
 #
 # vidware-x.sh
 #	vidware
@@ -23,10 +21,11 @@
 
 # Define variables
 THREADS=$(nproc)
-EXTRA_CFLAGS="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53"
+EXTRA_CFLAGS="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 \
+	-Ofast -pipe -fno-plt -fvisibility=hidden -flto -s"
 
 # Install dependencies
-sudo pacman --noconfirm --needed -S findutils wget tar waf libass
+sudo pacman --noconfirm --needed -S findutils wget tar make waf libass
 
 echo "Preparing build enviornment"
 mkdir -p vidware/{downloads,build,packages}
@@ -50,8 +49,42 @@ mv *x264* x264
 
 echo "Building x264"
 cd x264
-./configure --prefix=/usr --enable-shared --disable-opencl --extra-cflags=$EXTRA_CFLAGS
+./configure --prefix=/usr --enable-shared --enable-opencl --extra-cflags=$EXTRA_CFLAGS
 make -j$THREADS
-#sudo ldconfig
+sudo make install
+sudo ldconfig
+
+echo "Building ffmpeg"
+cd ../ffmpeg
+./configure --prefix=/usr --enable-gpl --enable-nonfree --enable-static --enable-libtheora \
+	--enable-libvorbis --enable-omx --enable-omx-rpi --enable-mmal --enable-libxcb \
+	--enable-libfreetype --enable-libass --enable-gnutls --enable-opencl --enable-libcdio \
+	--enable-libbluray \
+	--extra-cflags="-march=armv8-a+crc -mfpu=neon-fp-armv8 -mtune=cortex-a53" \ 
+	--enable-libx264 --enable-libfdk-aac --enable-libmp3lame   
+
+echo "Building mpv"
+cd ../mpv
+./waf configure --prefix=/usr --enable-cdda --enable-dvdread --enable-dvdnav --enable-libbluray
+./waf build -j$THREADS
+sudo ./waf install
+sudo ldconfig
+
+echo "Configuring mpv"
+if [-f ~/.config/mpv/mpv.conf]; then
+	"ytdl-format=bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best
+--alsa-buffer-time=800000" > ~/.config/mpv/mpv.conf
+fi
+
+echo "Installation complete"
+mpv -version
+
+echo "Downloading demo"
+cd ../../downloads
+youtube-dl -f bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best \
+	-o demo.mp4 https://youtu.be/LXb3EKWsInq
+
+echo "Playing demo"
+youtube-dl demo.mp4
 
 
