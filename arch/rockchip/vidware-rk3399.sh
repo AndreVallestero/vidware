@@ -47,10 +47,10 @@ sudo ldconfig
 
 echo "Building x264"
 cd ../x264*
-#./configure --prefix=/usr --enable-shared --enable-lto --enable-strip --extra-cflags=$EXTRA_CFLAGS
-#make -j$THREADS
-#sudo make install
-#sudo ldconfig
+./configure --prefix=/usr --enable-shared --enable-lto --enable-strip --extra-cflags=$EXTRA_CFLAGS
+make -j$THREADS
+sudo make install
+sudo ldconfig
 
 echo "Building ffmpeg"
 cd ../ffmpeg*
