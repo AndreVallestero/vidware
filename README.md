@@ -3,13 +3,13 @@ A build tool for compiling mpv, ffmpeg and their dependencies for maximum runtim
 
 List of SoCs and corresponding devices:
 
-### **Broadcom**
+## Broadcom
 
 **BCM2837B0**
 - Raspberry Pi 3B
 - Raspberry Pi 3B+
 
-### **Rockchip**
+## Rockchip
 
 **RK3399**
 - RockPro64
