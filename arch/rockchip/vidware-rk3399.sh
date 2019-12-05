@@ -40,7 +40,7 @@ git clone https://github.com/rockchip-linux/mpp.git
 
 echo "Building mpp"
 cd mpp* 
-cmake -DRKPLATFORM=ON -DHAVE_DRM=ON
+cmake -DRKPLATFORM=ON -DHAVE_DRM=ON .
 make
 sudo make install
 sudo ldconfig
