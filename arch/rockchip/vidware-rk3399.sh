@@ -51,9 +51,8 @@ cd ../ffmpeg
 ./configure --prefix=/usr --enable-gpl --enable-nonfree --enable-static --enable-libtheora \
 	--enable-libvorbis --enable-omx --enable-omx-rpi --enable-mmal --enable-libxcb \
 	--enable-libfreetype --enable-libass --enable-gnutls --enable-opencl --enable-libcdio \
-	--enable-libbluray \
-	--extra-cflags="-march=armv8-a+crc -mfpu=neon-fp-armv8 -mtune=cortex-a53" \ 
-	--enable-libx264 --enable-libfdk-aac --enable-libmp3lame   
+	--enable-libbluray --extra-cflags=$EXTRA_CFLAGS --enable-libx264 --enable-libfdk-aac \
+	--enable-libmp3lame   
 
 echo "Building mpv"
 cd ../mpv
