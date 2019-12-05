@@ -8,16 +8,8 @@
 #		can be distribution agnostic (test with Debian/Ubuntu and Arch/Manjaro) 
 #	- Prefer multithreaded decompression tools like pigz, pbzip2, zstd. Use --threads=0 for xz
 #		and zstd to enable multithreading. Use make -j($nproc).
-# 
-# only clean up when finished so if build is intterupted, progress is saved
-#
-# file structure:
-#
-# vidware-x.sh
-#	vidware
-#		downloads
-#		build
-#		packages
+#	- Only clean up when finished so if build is intterupted, progress is saved
+
 
 # Define variables
 THREADS=$(nproc)
@@ -25,7 +17,7 @@ EXTRA_CFLAGS="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=corte
 	-Ofast -pipe -fno-plt -fvisibility=hidden -flto -s"
 
 # Install dependencies
-sudo pacman --noconfirm --needed -S findutils wget tar make waf libass
+sudo pacman --noconfirm --needed -S findutils wget tar make waf libass youtube-dl
 
 echo "Preparing build enviornment"
 mkdir -p vidware/{downloads,build,packages}
@@ -86,5 +78,3 @@ youtube-dl -f bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bes
 
 echo "Playing demo"
 youtube-dl demo.mp4
-
-
