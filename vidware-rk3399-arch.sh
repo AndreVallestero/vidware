@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Hardware acceleration info:
+# 	- Decoder API:
+#		- Internal: 		VAAPI / VDPAU
+#		- Standalone: 		RockChip MPP
+#		- Hardware output:	RockChip MPP / VAAPI / VDPAU
+#	- Encoder API:
+#		- Standalone:		VAAPI
+#		- Hardware input:	VAAPI
+#	- Other:
+#		- Filtering:		VAAPI / OpenCL
+#		- Hardware context:	RockChip MPP / VAAPI / DVPAU / OpenCL 
+#
 # TODO:
 #	- Make script compatible with posix compilant shell (/bin/sh)
 #	- Have a top level script download common dependencies among all scripts then auto detect the
@@ -12,8 +24,8 @@
 
 echo "Preparing build enviornment"
 THREADS=$(nproc)
-mkdir -p vidware
-cd vidware
+mkdir -p vidware-build
+cd vidware-build
 
 echo "Installing dependencies"
 sudo pacman --noconfirm --needed -S findutils wget tar make sdl2 automake libva luajit-git mesa libtool \
@@ -24,7 +36,7 @@ sudo pacman --noconfirm --needed -S findutils wget tar make sdl2 automake libva 
 echo "Installing dependencies from the AUR"
 git clone https://aur.archlinux.org/rockchip-mpp.git
 cd rockchip-mpp
-makepkg -ACsif
+makepkg --noconfirm -ACsif
 cd ..
 
 echo "Downloading package tarballs to custom compile"
@@ -52,7 +64,7 @@ cd ../ffmpeg*
 ./configure --prefix=/usr --enable-gpl --enable-version3 --enable-nonfree --enable-static --enable-gmp \
 	--enable-gnutls --enable-libass --enable-libbluray --enable-libcdio --enable-libfdk-aac \
 	--enable-libfreetype --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libx264 \
-	--enable-libxcb --enable-opencl --enable-libdrm --enable-omx --enable-rkmpp --enable-lto \
+	--enable-libxcb --enable-opencl --enable-libdrm --enable-rkmpp --enable-lto \
 	--enable-hardcoded-tables --disable-debug \
 	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
 	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
@@ -62,23 +74,20 @@ sudo ldconfig
 
 echo "Building mpv"
 cd ../mpv*
-waf configure --prefix=/usr --enable-cdda --enable-dvdnav --enable-libbluray --enable-lgpl \
-	--disable-debug-build --enable-drm --enable-drmprime
+waf configure --prefix=/usr --enable-cdda --enable-dvdnav --enable-libbluray --disable-debug-build
 waf build -j$THREADS
 sudo waf install
 sudo ldconfig
 
 echo "Configuring mpv"
 if [ -f ~/.config/mpv/mpv.conf ]; then
-	"ytdl-format=bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best
---alsa-buffer-time=800000" > ~/.config/mpv/mpv.conf
+	"ytdl-format=bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best \ 
+		--alsa-buffer-time=800000" > ~/.config/mpv/mpv.conf
 else
-	echo "mpv configuration already existed, skipping step"
+	echo "An mpv configuration already exists, skipping step"
 fi
 
-echo "Installation complete"
-
-echo "Downloading demo"
+echo "Installation complete, downloading demo"
 cd ../
 youtube-dl -f "bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best" \
 	-o demo.mp4 https://www.youtube.com/watch?v=LXb3EKWsInQ
