@@ -10,45 +10,36 @@
 #		and zstd to enable multithreading. Use make -j($nproc).
 #	- Only clean up when finished so if build is intterupted, progress is saved
 
+echo "Preparing build enviornment"
+THREADS=$(nproc)
+mkdir -p vidware
+cd vidware
+
 echo "Installing dependencies"
 sudo pacman --noconfirm --needed -S findutils wget tar make sdl2 automake libva luajit-git mesa libtool \
 	libvdpau libxcb texinfo fontconfig fribidi python-docutils libbluray libjpeg-turbo libtheora \
 	libvorbis gnutls xdotool libcdio libcdio-paranoia libdvdread libdvdnav waf libass youtube-dl \
 	libfdk-aac libclc opencl-headers ocl-icd rockchip-tools cmake libdrm
 
-echo "Preparing build enviornment"
-THREADS=$(nproc)
-mkdir -p vidware/{downloads,build}
+echo "Installing dependencies from the AUR"
+git clone https://aur.archlinux.org/rockchip-mpp.git
+cd rockchip-mpp
+makepkg -ACsif
+cd ..
 
-echo "Downloading packages to custom compile"
-cd vidware/downloads
+echo "Downloading package tarballs to custom compile"
 echo "https://ffmpeg.org/releases/ffmpeg-4.2.tar.bz2 \
 https://github.com/mpv-player/mpv/archive/v0.30.0.tar.gz \
 https://download.videolan.org/x264/snapshots/x264-snapshot-20191204-2245-stable.tar.bz2" \
-| xargs -n1 -P$THREADS wget -q -nc
+| xargs -n1 -P$THREADS wget -q -N
 
-echo "Extracting packages and moving to build directory"
+echo "Extracting and removing tarballs"
 ls *.gz | xargs -n1 -P$THREADS tar --skip-old-files -xzf
 ls *.bz2 | xargs -n1 -P$THREADS tar --skip-old-files -jxf
-shopt -s extglob
-mv -n !(*.tar*) ../build
-cd ../build
-
-echo "Cloning git packages to custom compile"
-git clone https://github.com/rockchip-linux/mpp.git
-
-echo "Building mpp"
-cd mpp*/build 
-sudo cmake -DRKPLATFORM=ON -DHAVE_DRM=ON -DCMAKE_BUILD_TYPE=Release ..
-sudo cmake build .
-sudo cmake install .
-sudo ldconfig
-sudo make
-sudo make install
-sudo ldconfig
+rm *.tar*
 
 echo "Building x264"
-cd ../../x264*
+cd x264*
 ./configure --prefix=/usr --enable-shared --enable-lto --enable-strip \
 	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
 	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
@@ -81,17 +72,16 @@ echo "Configuring mpv"
 if [ -f ~/.config/mpv/mpv.conf ]; then
 	"ytdl-format=bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best
 --alsa-buffer-time=800000" > ~/.config/mpv/mpv.conf
+else
+	echo "mpv configuration already existed, skipping step"
 fi
 
 echo "Installation complete"
-mpv -version
 
 echo "Downloading demo"
-cd ../../downloads
-if [ ! -f demo.* ]; then
-	youtube-dl -f "bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best" \
-		-o demo.mp4 https://www.youtube.com/watch?v=LXb3EKWsInQ
-fi
+cd ../
+youtube-dl -f "bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best" \
+	-o demo.mp4 https://www.youtube.com/watch?v=LXb3EKWsInQ
 
 echo "Playing demo"
 mpv $(ls | grep demo)
