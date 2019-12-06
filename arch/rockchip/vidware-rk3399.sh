@@ -18,7 +18,6 @@ sudo pacman --noconfirm --needed -S findutils wget tar make sdl2 automake libva 
 
 echo "Preparing build enviornment"
 THREADS=$(nproc)
-EXTRA_CFLAGS="-march=armv8-a+crc+crypto"
 mkdir -p vidware/{downloads,build}
 
 echo "Downloading packages to custom compile"
@@ -39,33 +38,41 @@ echo "Cloning git packages to custom compile"
 git clone https://github.com/rockchip-linux/mpp.git
 
 echo "Building mpp"
-cd mpp* 
-cmake -DRKPLATFORM=ON -DHAVE_DRM=ON .
-make
+cd mpp*/build 
+sudo cmake -DRKPLATFORM=ON -DHAVE_DRM=ON -DCMAKE_BUILD_TYPE=Release ..
+sudo cmake build .
+sudo cmake install .
+sudo ldconfig
+sudo make
 sudo make install
 sudo ldconfig
 
 echo "Building x264"
-cd ../x264*
-./configure --prefix=/usr --enable-shared --enable-lto --enable-strip --extra-cflags=$EXTRA_CFLAGS
+cd ../../x264*
+./configure --prefix=/usr --enable-shared --enable-lto --enable-strip \
+	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
+	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
 make -j$THREADS
 sudo make install
 sudo ldconfig
 
 echo "Building ffmpeg"
 cd ../ffmpeg*
-./configure --prefix=/usr --enable-gpl --enable-version3 --enable-nonfree --enable-libdrm \
-	--enable-static --enable-libtheora --enable-libvorbis --enable-rkmpp --enable-libxcb \
-	--enable-libfreetype --enable-libass --enable-gnutls --enable-opencl --enable-libcdio \
-	--enable-libbluray --extra-cflags=$EXTRA_CFLAGS --enable-libx264 --enable-libfdk-aac \
-	--enable-libmp3lame --enable-hardcoded-tables
+./configure --prefix=/usr --enable-gpl --enable-version3 --enable-nonfree --enable-static --enable-gmp \
+	--enable-gnutls --enable-libass --enable-libbluray --enable-libcdio --enable-libfdk-aac \
+	--enable-libfreetype --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libx264 \
+	--enable-libxcb --enable-opencl --enable-libdrm --enable-omx --enable-rkmpp --enable-lto \
+	--enable-hardcoded-tables --disable-debug \
+	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
+	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
 make -j$THREADS
 sudo make install
 sudo ldconfig
 
 echo "Building mpv"
 cd ../mpv*
-waf configure --prefix=/usr --enable-cdda --enable-dvdnav --enable-libbluray
+waf configure --prefix=/usr --enable-cdda --enable-dvdnav --enable-libbluray --enable-lgpl \
+	--disable-debug-build --enable-drm --enable-drmprime
 waf build -j$THREADS
 sudo waf install
 sudo ldconfig
