@@ -3,10 +3,10 @@
 # Hardware acceleration info:
 # 	- Decoder API:
 #		- Internal: 		VAAPI / VDPAU
-#		- Standalone: 		RockChip MPP
+#		- Standalone: 		RockChip MPP / V4L2
 #		- Hardware output:	RockChip MPP / VAAPI / VDPAU
 #	- Encoder API:
-#		- Standalone:		VAAPI
+#		- Standalone:		VAAPI / V4L2
 #		- Hardware input:	VAAPI
 #	- Other:
 #		- Filtering:		VAAPI / OpenCL
@@ -33,10 +33,10 @@ sudo pacman --noconfirm --needed -S findutils wget tar make sdl2 automake libva 
 	libvorbis gnutls xdotool libcdio libcdio-paranoia libdvdread libdvdnav waf libass youtube-dl \
 	libfdk-aac libclc opencl-headers ocl-icd rockchip-tools cmake libdrm
 
-echo "Installing dependencies from the AUR"
+echo "Installing dependnecies from the AUR"
 git clone https://aur.archlinux.org/rockchip-mpp.git
 cd rockchip-mpp
-makepkg --noconfirm -ACsif
+makepkg --noconfirm --needed -Asi
 cd ..
 
 echo "Downloading package tarballs to custom compile"
@@ -51,7 +51,7 @@ ls *.bz2 | xargs -n1 -P$THREADS tar --skip-old-files -jxf
 rm *.tar*
 
 echo "Building x264"
-cd x264*
+cd ../x264*
 ./configure --prefix=/usr --enable-shared --enable-lto --enable-strip \
 	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
 	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
@@ -60,7 +60,8 @@ sudo make install
 sudo ldconfig
 
 echo "Building ffmpeg"
-cd ../ffmpeg*
+#cd ../ffmpeg*
+cd ffmpeg*
 ./configure --prefix=/usr --enable-gpl --enable-version3 --enable-nonfree --enable-static --enable-gmp \
 	--enable-gnutls --enable-libass --enable-libbluray --enable-libcdio --enable-libfdk-aac \
 	--enable-libfreetype --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libx264 \
@@ -74,18 +75,23 @@ sudo ldconfig
 
 echo "Building mpv"
 cd ../mpv*
-waf configure --prefix=/usr --enable-cdda --enable-dvdnav --enable-libbluray --disable-debug-build
+waf configure --prefix=/usr --enable-egl-drm --enable-cdda --enable-dvdnav --enable-libbluray \
+	--disable-debug-build 
+	
 waf build -j$THREADS
 sudo waf install
 sudo ldconfig
 
 echo "Configuring mpv"
-if [ -f ~/.config/mpv/mpv.conf ]; then
-	"ytdl-format=bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best \ 
-		--alsa-buffer-time=800000" > ~/.config/mpv/mpv.conf
-else
-	echo "An mpv configuration already exists, skipping step"
-fi
+echo 'vo=gpu
+gpu-context=drm
+hwdec=rkmpp
+demuxer-max-bytes=41943040
+demuxer-max-back-bytes=41943040
+drm-draw-plane=1
+drm-drmprime-vide-plane=0
+
+ytdl-format=bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best alsa-buffer-time=800000' > ~/.config/mpv/mpv.conf
 
 echo "Installation complete, downloading demo"
 cd ../
