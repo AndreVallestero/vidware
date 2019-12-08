@@ -28,10 +28,10 @@ mkdir -p vidware-build
 cd vidware-build
 
 echo "Installing dependencies"
-sudo pacman --noconfirm --needed -S findutils wget tar make sdl2 automake libva luajit-git mesa-git libtool \
-	libvdpau libxcb texinfo fontconfig fribidi python-docutils libbluray libjpeg-turbo libtheora \
-	libvorbis gnutls xdotool libcdio libcdio-paranoia libdvdread libdvdnav waf libass youtube-dl \
-	libfdk-aac libclc opencl-headers ocl-icd rockchip-tools cmake libdrm
+sudo pacman --noconfirm --needed -S findutils wget tar make sdl2 automake libva luajit-git mesa-git \
+	libtool libvdpau libxcb texinfo fontconfig fribidi python-docutils libbluray libjpeg-turbo \
+	libtheora libvorbis gnutls xdotool libcdio libcdio-paranoia libdvdread libdvdnav waf libass \
+	youtube-dl libfdk-aac libclc opencl-headers ocl-icd rockchip-tools cmake libdrm
 
 echo "Downloading package tarballs to custom compile"
 echo "https://ffmpeg.org/releases/ffmpeg-4.2.tar.bz2 \
@@ -58,7 +58,11 @@ cmake -DHAVE_DRM:BOOL='ON' -DRKPLATFORM:BOOL='ON' -DCMAKE_BUILD_TYPE:STRING='Rel
 	-DMPP_INFO_TEST:BOOL='OFF' -DMPP_LOG_TEST:BOOL='OFF' -DMPP_MEM_TEST:BOOL='OFF' \
 	-DMPP_PACKET_TEST:BOOL='OFF' -DMPP_PLATFORM_TEST:BOOL='OFF' -DMPP_RUNTIME_TEST:BOOL='OFF' \
 	-DMPP_TASK_TEST:BOOL='OFF' -DMPP_THREAD_TEST:BOOL='OFF' -DMPP_TIME_TEST:BOOL='OFF' \
-	-DRGA_TEST:BOOL='OFF' -DVPU_API_TEST:BOOL='OFF' ..
+	-DRGA_TEST:BOOL='OFF' -DVPU_API_TEST:BOOL='OFF' \
+	-DCMAKE_CXX_FLAGS_RELEASE:STRING='-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-flto -s' \
+	-DCMAKE_C_FLAGS_RELEASE:STRING='-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-flto -s' \
+	-DCMAKE_MODULE_LINKER_FLAGS_RELEASE:STRING='-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s' \
+	-DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING='-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s' ..
 make -j$THREADS
 sudo make install
 sudo ldconfig
@@ -66,7 +70,7 @@ sudo ldconfig
 echo "Building x264"
 cd ../../x264*
 ./configure --prefix=/usr --enable-shared --enable-lto --enable-strip \
-	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
+	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-flto -s" \
 	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
 make -j$THREADS
 sudo make install
@@ -79,7 +83,7 @@ cd ../ffmpeg*
 	--enable-libfreetype --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libx264 \
 	--enable-libxcb --enable-opencl --enable-libdrm --enable-rkmpp --enable-lto \
 	--enable-hardcoded-tables --disable-debug \
-	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
+	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-flto -s" \
 	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
 make -j$THREADS
 sudo make install
