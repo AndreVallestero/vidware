@@ -33,71 +33,29 @@ sudo pacman --noconfirm --needed -S findutils wget tar make sdl2 automake libva 
 	libvorbis gnutls xdotool libcdio libcdio-paranoia libdvdread libdvdnav waf libass youtube-dl \
 	libfdk-aac libclc opencl-headers ocl-icd rockchip-tools cmake libdrm
 
-echo "Installing dependnecies from the AUR"
-git clone https://aur.archlinux.org/rockchip-mpp.git
-cd rockchip-mpp
-makepkg --noconfirm --needed -ACsif
-cd ..
-
 echo "Downloading package tarballs to custom compile"
-echo "https://ffmpeg.org/releases/ffmpeg-4.2.tar.bz2 \
-https://github.com/mpv-player/mpv/archive/v0.30.0.tar.gz \
-https://download.videolan.org/x264/snapshots/x264-snapshot-20191204-2245-stable.tar.bz2" \
-| xargs -n1 -P$THREADS wget -q -N
+echo "https://ffmpeg.org/releases/ffmpeg-4.2.tar.bz2" \
+	| xargs -n1 -P$THREADS wget -q -N
+
+echo "Downloading latest git repos to custom compile"
+git clone https://github.com/rockchip-linux/mpp.git
 
 echo "Extracting and removing tarballs"
 ls *.gz | xargs -n1 -P$THREADS tar --skip-old-files -xzf
 ls *.bz2 | xargs -n1 -P$THREADS tar --skip-old-files -jxf
 rm *.tar*
 
-echo "Building x264"
-cd x264*
-./configure --prefix=/usr --enable-shared --enable-lto --enable-strip \
-	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
-	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
+echo "Building mpp"
+cd mpp*/build
+sed -i 's/${SYSPROC} STREQUAL "armv8-a"/${SYSPROC} STREQUAL "armv8-a" OR ${SYSPROC} STREQUAL "aarch64"/g' ../CMakeLists.txt
+cmake -DHAVE_DRM:BOOL='ON' -DRKPLATFORM:BOOL='ON' -DCMAKE_INSTALL_PREFIX:PATH='/usr' ..
 make -j$THREADS
 sudo make install
 sudo ldconfig
 
 echo "Building ffmpeg"
-cd ../ffmpeg*
-./configure --prefix=/usr --enable-gpl --enable-version3 --enable-nonfree --enable-static --enable-gmp \
-	--enable-gnutls --enable-libass --enable-libbluray --enable-libcdio --enable-libfdk-aac \
-	--enable-libfreetype --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libx264 \
-	--enable-libxcb --enable-opencl --enable-libdrm --enable-rkmpp --enable-lto \
-	--enable-hardcoded-tables --disable-debug \
-	--extra-cflags="-march=armv8-a+crc+crypto -mtune=cortex-a72.cortex-a53 -mcpu=cortex-a72.cortex-a53 -Ofast -pipe -fno-plt -fvisibility=hidden -flto -Wl,-lfto -s" \
-	--extra-ldflags="-Wl,--hash-style=both -Wl,-znow -Wl,--as-needed -Wl,--sort-common -Wl,--relax -Wl,--enable-new-dtags -Wl,-flto -Wl,-s"
+cd ../../ffmpeg*
+./configure --prefix=/usr --enable-rkmpp --enable-nonfree --enable-opengl --enable-libdrm --enable-version3 --enable-shared --disable-static --enable-openssl
 make -j$THREADS
 sudo make install
 sudo ldconfig
-
-echo "Building mpv"
-cd ../mpv*
-waf configure --prefix=/usr --enable-egl-drm --enable-cdda --enable-dvdnav --enable-libbluray \
-	--disable-debug-build 
-	
-waf build -j$THREADS
-sudo waf install
-sudo ldconfig
-
-echo "Configuring mpv"
-mkdir -p ~/.config/mpv
-echo 'vo=gpu
-gpu-context=drm
-hwdec=rkmpp
-demuxer-max-bytes=41943040
-demuxer-max-back-bytes=41943040
-drm-draw-plane=1
-drm-drmprime-video-plane=0
-
-ytdl-format=bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best
-alsa-buffer-time=800000' > ~/.config/mpv/mpv.conf
-
-echo "Installation complete, downloading demo"
-cd ../
-youtube-dl -f "bestvideo[height<=?1080][width<=?1920][fps<=?30][vcodec!=?vp9]+bestaudio/best" \
-	-o demo.mp4 https://www.youtube.com/watch?v=LXb3EKWsInQ
-
-echo "Playing demo"
-mpv $(ls | grep demo)
