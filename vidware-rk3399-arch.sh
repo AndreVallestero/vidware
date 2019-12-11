@@ -82,6 +82,7 @@ sudo waf install
 sudo ldconfig
 
 echo "Configuring mpv"
+mkdir -p ~/.config/mpv
 echo 'vo=gpu
 gpu-context=drm
 hwdec=rkmpp
